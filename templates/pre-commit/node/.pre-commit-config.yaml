@@ -1,0 +1,49 @@
+# Pre-commit конфиг для Node/TypeScript проектов Романа
+# Установка: pip install pre-commit && pre-commit install
+# (pre-commit framework на Python, но управляет любыми хуками)
+
+repos:
+  # Базовые проверки
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  # ESLint + Prettier через локальные npm скрипты
+  - repo: local
+    hooks:
+      - id: eslint
+        name: eslint
+        entry: npx eslint --fix
+        language: system
+        files: \.(js|jsx|ts|tsx)$
+        pass_filenames: true
+
+      - id: prettier
+        name: prettier
+        entry: npx prettier --write
+        language: system
+        files: \.(js|jsx|ts|tsx|json|md|yml|yaml|css)$
+        pass_filenames: true
+
+      - id: typecheck
+        name: tsc typecheck
+        entry: npx tsc --noEmit
+        language: system
+        types: [ts]
+        pass_filenames: false
+
+  # Защита от секретов
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: package-lock\.json|pnpm-lock\.yaml|yarn\.lock
