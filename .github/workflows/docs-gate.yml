@@ -1,0 +1,134 @@
+name: Docs Gate (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      base-ref:
+        type: string
+        default: main
+      python-version:
+        type: string
+        default: "3.12"
+      docstring-threshold:
+        type: number
+        default: 70
+      ai-fallback:
+        type: boolean
+        default: false
+    secrets:
+      ANTHROPIC_API_KEY:
+        required: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    outputs:
+      missing-adr: ${{ steps.adr.outputs.missing }}
+      missing-docstrings: ${{ steps.doc.outputs.missing }}
+      missing-changelog: ${{ steps.cl.outputs.missing }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Detect changed source files
+        id: src
+        run: |
+          BASE="${{ inputs.base-ref }}"
+          # Файлы кода (не doc/test)
+          CHANGED=$(git diff --name-only origin/$BASE...HEAD | grep -E '\.(py|ts|tsx|js|jsx|go|rs)$' | grep -v -E '(test|spec|__tests__)' || true)
+          echo "files<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGED" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          [[ -z "$CHANGED" ]] && echo "skip=true" >> $GITHUB_OUTPUT || echo "skip=false" >> $GITHUB_OUTPUT
+
+      - name: Check ADR for architectural changes
+        id: adr
+        if: steps.src.outputs.skip != 'true'
+        run: |
+          BASE="${{ inputs.base-ref }}"
+          # Список значимых паттернов: новый файл с публичным API, изменение интерфейса
+          MAJOR_CHANGES=$(git diff --name-status origin/$BASE...HEAD | grep -E '^A\s+(src|lib|app)/' | awk '{print $2}' || true)
+          NEW_ADRS=$(git diff --name-only origin/$BASE...HEAD | grep -E '^docs/decisions/.+\.md$' || true)
+
+          if [[ -n "$MAJOR_CHANGES" && -z "$NEW_ADRS" ]]; then
+            echo "missing=true" >> $GITHUB_OUTPUT
+            echo "::warning::Архитектурные изменения без ADR. Создайте файл в docs/decisions/ через /document decision <slug>"
+            echo "Major changes:"
+            echo "$MAJOR_CHANGES"
+          else
+            echo "missing=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check docstring coverage (Python)
+        id: doc
+        if: steps.src.outputs.skip != 'true' && hashFiles('**/*.py') != ''
+        run: |
+          pip install interrogate
+          THRESHOLD="${{ inputs.docstring-threshold }}"
+          if interrogate --fail-under=$THRESHOLD --quiet src/ 2>/dev/null || \
+             interrogate --fail-under=$THRESHOLD --quiet . 2>/dev/null; then
+            echo "missing=false" >> $GITHUB_OUTPUT
+          else
+            echo "missing=true" >> $GITHUB_OUTPUT
+            echo "::warning::Docstring coverage ниже $THRESHOLD%. Добавьте docstrings к публичным функциям."
+            interrogate -v . || true
+          fi
+
+      - name: Check changelog updated
+        id: cl
+        if: steps.src.outputs.skip != 'true'
+        run: |
+          BASE="${{ inputs.base-ref }}"
+          # Проверка что CHANGELOG.md или docs/changelog.md был изменён
+          CHANGED_LOG=$(git diff --name-only origin/$BASE...HEAD | grep -E '(CHANGELOG\.md|docs/changelog\.md)' || true)
+          if [[ -z "$CHANGED_LOG" ]]; then
+            echo "missing=true" >> $GITHUB_OUTPUT
+            echo "::warning::CHANGELOG не обновлён. Добавьте запись в Unreleased секцию."
+          else
+            echo "missing=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: AI fallback — generate missing docs
+        if: |
+          inputs.ai-fallback &&
+          (steps.adr.outputs.missing == 'true' ||
+           steps.doc.outputs.missing == 'true' ||
+           steps.cl.outputs.missing == 'true')
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [[ -z "$ANTHROPIC_API_KEY" ]]; then
+            echo "::warning::AI fallback пропущен — нет ANTHROPIC_API_KEY secret"
+            exit 0
+          fi
+          # Здесь будет вызов Claude API через скрипт ai-fallback.sh из claude-stack
+          echo "AI fallback to be implemented via scripts/docs-gate/ai-fallback.sh"
+
+      - name: Final verdict
+        run: |
+          MISSING_ADR="${{ steps.adr.outputs.missing }}"
+          MISSING_DOC="${{ steps.doc.outputs.missing }}"
+          MISSING_CL="${{ steps.cl.outputs.missing }}"
+
+          echo "## Docs Gate Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Проверка | Статус |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| ADR для архитектурных изменений | ${MISSING_ADR/true/❌ FAIL} ${MISSING_ADR/false/✅ PASS}" >> $GITHUB_STEP_SUMMARY
+          echo "| Docstring coverage ≥ ${{ inputs.docstring-threshold }}% | ${MISSING_DOC/true/❌ FAIL} ${MISSING_DOC/false/✅ PASS}" >> $GITHUB_STEP_SUMMARY
+          echo "| CHANGELOG обновлён | ${MISSING_CL/true/❌ FAIL} ${MISSING_CL/false/✅ PASS}" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "$MISSING_ADR" == "true" || "$MISSING_DOC" == "true" || "$MISSING_CL" == "true" ]]; then
+            echo "Docs Gate: FAIL"
+            exit 1
+          fi
+          echo "Docs Gate: PASS"

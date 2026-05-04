@@ -1,0 +1,105 @@
+site_name: PROJECT_NAME — документация
+site_description: Техническая и функциональная документация проекта
+site_author: Roman Kazakov
+
+# Подменяется через /new-project на актуальный URL
+site_url: https://rkazakov891.github.io/PROJECT_NAME/
+
+# Локальный dev — порт 8765 (8000 НЕ использовать, занят)
+dev_addr: 0.0.0.0:8765
+
+theme:
+  name: material
+  language: ru
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.tracking
+    - search.highlight
+    - search.suggest
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+    - toc.follow
+    - toc.integrate
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Тёмная тема
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Светлая тема
+  icon:
+    repo: fontawesome/brands/github
+
+repo_url: https://github.com/rkazakov891/PROJECT_NAME
+repo_name: rkazakov891/PROJECT_NAME
+edit_uri: edit/main/docs/
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - attr_list
+  - md_in_html
+  - footnotes
+  - toc:
+      permalink: true
+
+plugins:
+  - search:
+      lang: [ru, en]
+  - mike:
+      version_selector: true
+      canonical_version: latest
+      alias_type: copy
+
+nav:
+  - Главная: index.md
+  - Архитектура:
+      - Обзор: architecture/index.md
+      - Компоненты: architecture/components.md
+      - Потоки данных: architecture/data-flows.md
+      - Инварианты: architecture/invariants.md
+  - Решения (ADR): decisions/index.md
+  - Функциональная:
+      - User Guide: user-guide/index.md
+      - Сценарии: user-guide/scenarios.md
+  - Разработка:
+      - Setup: development/setup.md
+      - Тестирование: development/testing.md
+      - Запуск (порты): development/ports.md
+      - Contributing: development/contributing.md
+  - API: api/index.md
+  - Релизы:
+      - Changelog: changelog.md
+      - История релизов: releases/index.md
+
+extra:
+  version:
+    provider: mike
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/rkazakov891
