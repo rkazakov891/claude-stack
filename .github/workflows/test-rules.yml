@@ -1,0 +1,39 @@
+name: Test rules resolver
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "rules.yaml"
+      - "scripts/resolve-rules.py"
+      - "tests/**"
+      - ".github/workflows/test-rules.yml"
+  pull_request:
+    paths:
+      - "rules.yaml"
+      - "scripts/resolve-rules.py"
+      - "tests/**"
+      - ".github/workflows/test-rules.yml"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest PyYAML
+
+      - name: Validate rules.yaml schema
+        run: python scripts/resolve-rules.py --validate
+
+      - name: Run pytest suite
+        run: python -m pytest tests/ -q

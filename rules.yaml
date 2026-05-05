@@ -1,0 +1,128 @@
+# Operating rules for Roman's Claude Code workflow.
+# Single source of truth for the «🔴 ОБЯЗАТЕЛЬНЫЕ ПРАВИЛА» that propagate to
+# every per-project CLAUDE.md via the resolve-rules.py script.
+#
+# Schema:
+#   version: semver of the whole ruleset (bumped on any rule change)
+#   rules:
+#     - id:           stable identifier, never reused (rN)
+#       title:        short human-readable title
+#       body:         the rule text (markdown allowed; multi-line)
+#       applies_to:   list of tags; resolver filters by these
+#                       all          — every project
+#                       has_board    — project has a per-project board
+#                       has_repo     — project is on GitHub
+#                       has_decisions — project has decisions/ ADRs
+#                       runs_service — project starts a network service
+#       severity:     critical | important | nice-to-have
+#
+# When adding a rule: append at the bottom with the next free `r<N>` id, bump
+# the top-level version (minor for additive, major for semantics).
+# When deprecating a rule: leave the entry, set `deprecated: true`, keep id.
+
+version: "1.0.0"
+
+rules:
+
+  - id: r1
+    title: ADR before implementation, never after
+    severity: critical
+    applies_to: [all]
+    body: |
+      Последовательность: обсуждение альтернатив → выбор → `/document decision <slug>`
+      (создание ADR в `decisions/`) → **только потом** реализация. Без ADR
+      реализация не начинается.
+
+      Применимо к: выбор инструмента/фреймворка между альтернативами,
+      изменение схемы/контракта, отказ от подхода, архитектурный шов,
+      workaround внешнего ограничения.
+
+  - id: r2
+    title: Documentation in the same PR as the code
+    severity: critical
+    applies_to: [all]
+    body: |
+      `ARCHITECTURE.md` / `RESOURCES.md` / `decisions/` обновляются ВМЕСТЕ
+      с кодом, не «потом». В одном PR с кодом. PostToolUse hook автосинкает
+      портал — не вмешиваюсь.
+
+  - id: r3
+    title: Task status moves automatically
+    severity: critical
+    applies_to: [has_board]
+    body: |
+      Status задачи на канбане Roman PMO двигается автоматически:
+      беру задачу в работу → Todo → In Progress + Branch.
+      Закрыл → In Progress → Done.
+      Никогда не оставляю задачу в неправильном статусе.
+
+  - id: r4
+    title: Ports in memory/ports.md, never 8000
+    severity: critical
+    applies_to: [runs_service]
+    body: |
+      Порты регистрируются в `memory/ports.md` при запуске любого сервиса.
+      Порт 8000 НЕ использовать. Перед запуском сверяюсь, после запуска обновляю.
+
+  - id: r5
+    title: /new-project runs all 9 mandatory steps
+    severity: critical
+    applies_to: [all]
+    body: |
+      При создании нового проекта — ВСЕ 9 шагов из правила
+      «Правило создания нового проекта» обязательны, ни один не пропускается.
+      Включая per-project Project board.
+
+  - id: r6
+    title: Discussion of feature/bug/change → card on the board
+    severity: critical
+    applies_to: [has_board]
+    body: |
+      Обсуждение новой фичи / изменения / бага с намерением сделать →
+      автоматически карточка на per-project Project board + Roman PMO portfolio.
+
+      Триггеры: «давай сделаем X», «надо добавить Y», «хочу чтобы было Z»,
+      «сломалось — почини», review feedback требующий правок,
+      обнаружение бага в обсуждении, brainstorm выявивший gap.
+
+      Создаю через `pmo_create_dual_task` / `pmo_create_issue_task` без
+      ожидания апрува. Если карточка уже есть — обновляю body. Не «потом
+      запомню» — сразу.
+
+      Исключение: чисто read-only вопросы («как это работает», «покажи X») —
+      не задачи.
+
+  - id: r7
+    title: Each new ADR → comment on related card with link
+    severity: critical
+    applies_to: [has_board, has_decisions]
+    body: |
+      Каждая созданная ADR → комментарий со ссылкой в связанной карточке
+      на доске. После `/document decision <slug>` или ручного Write нового
+      файла в `decisions/` — нахожу связанные карточки (по контексту разговора —
+      обычно те задачи которые triggered ADR), добавляю комментарий с URL ADR
+      + краткое summary решения.
+
+      Если карточек нет — создаю (см. r6). При нескольких связанных задачах —
+      комментарий ко всем.
+
+  - id: r8
+    title: UserPromptSubmit hook injects manifest, not content
+    severity: important
+    applies_to: [all]
+    body: |
+      Hook кладёт в контекст карту файлов проекта (пути, размеры,
+      аннотация «читать когда») — но не тело файлов. Перед нетривиальным
+      действием **обязан** открыть релевантный файл из manifest через `Read`:
+
+      - `ARCHITECTURE.md` — при изменении структуры или добавлении модуля
+      - `RESOURCES.md` — при работе с сервисами / поиске где лежит ключ
+      - `decisions/<slug>.md` — при принятии решения для которого может уже быть ADR
+
+      Не предполагаю по названию что внутри — открываю и сверяюсь.
+      Если файла нет в manifest — его в проекте нет.
+
+closing_check: |
+  Перед закрытием сессии (Stop) или ответом Роману: мысленный чек —
+  «не пропустил ли я ADR / документацию / status / порт / карточку /
+  link ADR↔карточка / Read файла из manifest?»
