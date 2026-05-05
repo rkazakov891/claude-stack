@@ -33,7 +33,10 @@ from pathlib import Path
 
 import yaml
 
-CLAUDE_STACK_ROOT = Path.home() / ".claude" / "cache" / "claude-stack"
+# The script lives at <repo>/scripts/resolve-rules.py — derive the repo root
+# from the file location so it works regardless of where the repo was checked
+# out (local cache, GitHub Actions runner, etc.).
+CLAUDE_STACK_ROOT = Path(__file__).resolve().parent.parent
 RULES_PATH = CLAUDE_STACK_ROOT / "rules.yaml"
 PROJECTS_ROOT = Path("G:/Projects") if Path("G:/Projects").exists() else Path("/g/Projects")
 
