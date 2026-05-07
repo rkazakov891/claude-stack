@@ -20,7 +20,7 @@
 # the top-level version (minor for additive, major for semantics).
 # When deprecating a rule: leave the entry, set `deprecated: true`, keep id.
 
-version: "1.0.0"
+version: "1.1.0"
 
 rules:
 
@@ -122,7 +122,42 @@ rules:
       Не предполагаю по названию что внутри — открываю и сверяюсь.
       Если файла нет в manifest — его в проекте нет.
 
+  - id: r9
+    title: User scenarios + smoke + real-integration на каждом user-facing PR
+    severity: critical
+    applies_to: [all]
+    body: |
+      Каждый ADR для user-facing функциональности обязан содержать секцию
+      **"User scenarios"** — 4–7 end-to-end сценариев от UI/CLI до результата
+      (для bugfix/refactor/чисто внутренних изменений — пометь
+      `n/a — internal-only` с обоснованием).
+
+      Перед merge каждый сценарий проходит **два gate'а** (порядок обязательный):
+
+      **Gate A — Smoke (stub-friendly).** Playwright/CLI прогон через реальную
+      surface, внешние интеграции могут быть mock'нуты. Цель: ловить структурные
+      баги (forms wired, routes work, state transitions, buttons hit endpoints).
+      Артефакт — `tests/playwright/<scenario>.py` или `tests/smoke/<scenario>.sh`.
+
+      **Gate B — Real-integration (no mocks).** Тот же сценарий на реальных
+      интеграциях: настоящий OpenRouter/LLM, настоящий observability backend,
+      настоящая БД, настоящие парсеры. Цель: ловить drift между mock и real
+      (SDK version mismatch, schema strip, missing pyproject extras, env vars
+      не загружаются). Артефакт — `runs/scenario_evidence/<date>/<scenario>.md`
+      со скриншотами + trace URL + список observed events + версия SDK.
+
+      Smoke **без** real-integration → **FAIL** (пропускает drift-баги типа
+      `job_id`-в-state на 2026-05-06). Escape-hatch — только если real-integration
+      окружение объективно недоступно (сервис лежит, бюджет кончился) + явный
+      footer `real-integration-skipped: <reason>` + follow-up задача на доске.
+
+      Триггер для bugfix/internal PR — pass через явный маркер `n/a — internal-only`
+      в ADR + commit message. Enforce'ит `/ship-gate` на шаге 3.6.
+
+      Source ADR: `2026-05-07-user-scenarios-and-real-integration-gate.md`
+      (создан в ProstoVC, применим глобально).
+
 closing_check: |
   Перед закрытием сессии (Stop) или ответом Роману: мысленный чек —
   «не пропустил ли я ADR / документацию / status / порт / карточку /
-  link ADR↔карточка / Read файла из manifest?»
+  link ADR↔карточка / Read файла из manifest / user scenarios + Gate A/B?»
