@@ -20,7 +20,7 @@
 # the top-level version (minor for additive, major for semantics).
 # When deprecating a rule: leave the entry, set `deprecated: true`, keep id.
 
-version: "1.1.0"
+version: "1.1.1"
 
 rules:
 
@@ -128,9 +128,11 @@ rules:
     applies_to: [all]
     body: |
       Каждый ADR для user-facing функциональности обязан содержать секцию
-      **"User scenarios"** — 4–7 end-to-end сценариев от UI/CLI до результата
-      (для bugfix/refactor/чисто внутренних изменений — пометь
-      `n/a — internal-only` с обоснованием).
+      **"User scenarios"**: persona (кто пользуется) + 4–7 end-to-end сценариев
+      от UI/CLI до результата. Workflow создания: я определяю persona →
+      набрасываю сценарии → утверждаю с Романом в чате → коммичу ADR с уже
+      утверждёнными сценариями. Для bugfix/refactor/чисто внутренних изменений
+      — пометь `n/a — internal-only` с обоснованием.
 
       Перед merge каждый сценарий проходит **два gate'а** (порядок обязательный):
 
@@ -143,16 +145,27 @@ rules:
       интеграциях: настоящий OpenRouter/LLM, настоящий observability backend,
       настоящая БД, настоящие парсеры. Цель: ловить drift между mock и real
       (SDK version mismatch, schema strip, missing pyproject extras, env vars
-      не загружаются). Артефакт — `runs/scenario_evidence/<date>/<scenario>.md`
-      со скриншотами + trace URL + список observed events + версия SDK.
+      не загружаются).
 
-      Smoke **без** real-integration → **FAIL** (пропускает drift-баги типа
-      `job_id`-в-state на 2026-05-06). Escape-hatch — только если real-integration
-      окружение объективно недоступно (сервис лежит, бюджет кончился) + явный
-      footer `real-integration-skipped: <reason>` + follow-up задача на доске.
+      **Артефакт в git** — `runs/scenario_evidence/<date>/<scenario>.md` с итогом
+      анализа: verdict pass/fail, ключевые наблюдения, версия SDK, ссылка на
+      trace в observability backend. Скриншоты и raw traces — локально, в git
+      не коммитятся.
 
-      Триггер для bugfix/internal PR — pass через явный маркер `n/a — internal-only`
-      в ADR + commit message. Enforce'ит `/ship-gate` на шаге 3.6.
+      Smoke **без** real-integration → **FAIL**. **Эскейп-хатча нет** — Gate B
+      всегда blocking. Любой обрыв = баг + работа до зелёного:
+        • Сценарий broken на real → Issue + per-project board (Type=bug) +
+          Roman PMO portfolio → беру в работу → чиню → re-run.
+        • Окружение не работает (Langfuse self-host лежит, БД недоступна) →
+          баг "среда X недоступна" → поднимаю сам → re-run.
+        • Внешнее ограничение (OR-баланс, secrets) → Issue + явно прошу Романа
+          в чате с конкретным запросом ("OR-баланс кончился, пополни") →
+          жду → re-run.
+
+      Backfill старых ADR (до 2026-05-07) не делаем — правило применяется только
+      к новым решениям.
+
+      Enforce'ит `/ship-gate` на шаге 3.6.
 
       Source ADR: `2026-05-07-user-scenarios-and-real-integration-gate.md`
       (создан в ProstoVC, применим глобально).
