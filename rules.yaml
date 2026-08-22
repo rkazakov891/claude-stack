@@ -20,7 +20,7 @@
 # the top-level version (minor for additive, major for semantics).
 # When deprecating a rule: leave the entry, set `deprecated: true`, keep id.
 
-version: "1.1.1"
+version: "1.2.0"
 
 rules:
 
@@ -107,20 +107,21 @@ rules:
       комментарий ко всем.
 
   - id: r8
-    title: UserPromptSubmit hook injects manifest, not content
+    title: Read project docs before non-trivial action
     severity: important
     applies_to: [all]
     body: |
-      Hook кладёт в контекст карту файлов проекта (пути, размеры,
-      аннотация «читать когда») — но не тело файлов. Перед нетривиальным
-      действием **обязан** открыть релевантный файл из manifest через `Read`:
+      Перед нетривиальным действием **обязан** открыть релевантный проектный
+      док через `Read`:
 
       - `ARCHITECTURE.md` — при изменении структуры или добавлении модуля
       - `RESOURCES.md` — при работе с сервисами / поиске где лежит ключ
       - `decisions/<slug>.md` — при принятии решения для которого может уже быть ADR
 
       Не предполагаю по названию что внутри — открываю и сверяюсь.
-      Если файла нет в manifest — его в проекте нет.
+
+      (Manifest-инжект UserPromptSubmit-хуком снят —
+      ADR 2026-08-02-hooks-diet-static-context.)
 
   - id: r9
     title: User scenarios + smoke + real-integration на каждом user-facing PR
@@ -173,4 +174,4 @@ rules:
 closing_check: |
   Перед закрытием сессии (Stop) или ответом Роману: мысленный чек —
   «не пропустил ли я ADR / документацию / status / порт / карточку /
-  link ADR↔карточка / Read файла из manifest / user scenarios + Gate A/B?»
+  link ADR↔карточка / Read релевантного дока / user scenarios + Gate A/B?»
