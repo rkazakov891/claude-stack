@@ -20,7 +20,7 @@
 # the top-level version (minor for additive, major for semantics).
 # When deprecating a rule: leave the entry, set `deprecated: true`, keep id.
 
-version: "1.2.0"
+version: "2.0.0"
 
 rules:
 
@@ -56,6 +56,10 @@ rules:
       Закрыл → In Progress → Done.
       Никогда не оставляю задачу в неправильном статусе.
 
+      Исключение — проекты на valcraft-SDD: статус задач живёт в
+      `specs/*/tasks.md` (чекбоксы T-XXX/QT-XXX), доска — опциональная
+      проекция уровня фич (ADR 2026-08-22-valcraft-bridge).
+
   - id: r4
     title: Ports in memory/ports.md, never 8000
     severity: critical
@@ -89,8 +93,11 @@ rules:
       ожидания апрува. Если карточка уже есть — обновляю body. Не «потом
       запомню» — сразу.
 
-      Исключение: чисто read-only вопросы («как это работает», «покажи X») —
-      не задачи.
+      Исключения:
+      - чисто read-only вопросы («как это работает», «покажи X») — не задачи;
+      - проекты на valcraft-SDD: задача фиксируется в `specs/` через
+        `/valcraft:spec` (триплет или quick-файл), карточка на доске —
+        опционально, уровень фичи (ADR 2026-08-22-valcraft-bridge).
 
   - id: r7
     title: Each new ADR → comment on related card with link
